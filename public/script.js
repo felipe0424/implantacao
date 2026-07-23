@@ -197,6 +197,7 @@ function createSidebarCard(company) {
 
   card.addEventListener('dragstart', (e) => {
     state.draggingId = company.id;
+    state.draggingFrom = null;
     card.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', company.id);
@@ -325,7 +326,7 @@ function renderCalendar() {
             const comp = companies.find(c => c.id === a.companyId);
             if (comp) {
               const spanLabel = rowspan > 1 ? ` (${rowspan}h)` : '';
-              html += `<div class="slot-card${rowspan > 1 ? ' spanning' : ''}" data-company-id="${comp.id}" data-date="${dateStr}" data-time="${time}" data-tech="${tech}">
+              html += `<div class="slot-card${rowspan > 1 ? ' spanning' : ''}" draggable="true" data-company-id="${comp.id}" data-date="${dateStr}" data-time="${time}" data-tech="${tech}" data-span="${rowspan}">
                 <span class="tech-indicator ${TECH_CLASSES[tech]}">${TECH_LETTERS[tech]}</span>
                 <span>${comp.id} - ${comp.nome}${spanLabel}</span>
                 <button class="remove-btn" data-remove-company="${comp.id}" data-remove-date="${dateStr}" data-remove-time="${time}" data-remove-tech="${tech}" data-remove-span="${rowspan}">✕</button>
@@ -465,7 +466,21 @@ function attachCalendarEvents(grid) {
       const existing = getAllocsForSlot(dateStr, time, tech);
       if (existing.length > 0) return;
 
-      await addAllocation(state.draggingId, tech, dateStr, time, 1);
+      const span = state.draggingFrom ? state.draggingFrom.span : 1;
+
+      // If moving from another slot, remove from original position first
+      if (state.draggingFrom) {
+        const from = state.draggingFrom;
+        const startIdx = TIMES.indexOf(from.time);
+        for (let i = 0; i < from.span; i++) {
+          const t = TIMES[startIdx + i];
+          if (t) await removeAllocation(state.draggingId, from.date, t, from.tech);
+        }
+      }
+
+      // Add to new position with same span
+      await addAllocation(state.draggingId, tech, dateStr, time, span);
+      state.draggingFrom = null;
       renderAll();
     });
   });
@@ -511,7 +526,7 @@ function attachCalendarEvents(grid) {
     });
   });
 
-  // Tooltip on slot cards
+  // Tooltip on slot cards + drag from calendar
   grid.querySelectorAll('.slot-card').forEach(card => {
     const cid = card.dataset.companyId;
     const comp = companies.find(c => c.id === cid);
@@ -520,6 +535,27 @@ function attachCalendarEvents(grid) {
       card.addEventListener('mousemove', (e) => moveTooltip(e));
       card.addEventListener('mouseleave', hideTooltip);
     }
+
+    card.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      state.draggingId = cid;
+      state.draggingFrom = {
+        date: card.dataset.date,
+        time: card.dataset.time,
+        tech: card.dataset.tech,
+        span: parseInt(card.dataset.span) || 1
+      };
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', cid);
+    });
+
+    card.addEventListener('dragend', () => {
+      state.draggingId = null;
+      state.draggingFrom = null;
+      card.classList.remove('dragging');
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
   });
 
   // Day block/unblock buttons
