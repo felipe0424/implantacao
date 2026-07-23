@@ -1,12 +1,14 @@
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const sql = neon(process.env.DATABASE_URL);
+
   // GET - listar bloqueios
   if (req.method === 'GET') {
     try {
-      const { rows } = await sql`SELECT * FROM blocked_slots ORDER BY date, time`;
+      const rows = await sql`SELECT * FROM blocked_slots ORDER BY date, time`;
       const blocked = rows.map(r => ({
         id: r.id,
         tech: r.tech,

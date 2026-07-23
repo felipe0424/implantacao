@@ -1,7 +1,9 @@
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const sql = neon(process.env.DATABASE_URL);
 
   try {
     await sql`
@@ -22,7 +24,7 @@ export default async function handler(req, res) {
     await sql`
       CREATE TABLE IF NOT EXISTS allocations (
         id SERIAL PRIMARY KEY,
-        company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        company_id TEXT NOT NULL,
         tech TEXT NOT NULL,
         date TEXT NOT NULL,
         time TEXT NOT NULL,
@@ -43,7 +45,7 @@ export default async function handler(req, res) {
     `;
 
     // Seed default companies if empty
-    const { rows } = await sql`SELECT COUNT(*) as count FROM companies`;
+    const rows = await sql`SELECT COUNT(*) as count FROM companies`;
     if (parseInt(rows[0].count) === 0) {
       await sql`INSERT INTO companies (id, nome, cidade, link, meu_carrinho, cardapio, certificado, responsavel, horarios) VALUES
         ('74051', 'SORVETES NESTLE VILAREJO', 'PETROLINA', 'sorvetesnestle.meusoftcom.com.br', 'Não liberado', 'Recebido, Não Cadastrado', 'Não recebido', 'Cli Thais Nestlé Vilarejo', '["30/07 (16h) - Instalação + Treinamento","31/07 (16h) - Continuação de treinamento","01/08 (17h) - Virada de sistema"]'),
