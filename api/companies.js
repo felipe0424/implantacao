@@ -3,7 +3,9 @@ import { neon } from '@neondatabase/serverless';
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const sql = neon(process.env.DATABASE_URL);
+  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!dbUrl) return res.status(500).json({ error: 'DATABASE_URL não configurada' });
+  const sql = neon(dbUrl);
 
   // GET - listar empresas
   if (req.method === 'GET') {
