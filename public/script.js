@@ -302,12 +302,15 @@ function renderCalendar() {
       html += `<td class="${cellClass}"${rowspanAttr}${heightStyle} data-date="${dateStr}" data-time="${time}" data-tech="${tech}">`;
 
       if (!blocked) {
-        html += `<div class="slot-actions">
-          <button class="slot-action-btn add-btn" data-action="add" data-date="${dateStr}" data-time="${time}" data-tech="${tech}" title="Adicionar">+</button>
-          <button class="slot-action-btn block-btn" data-action="block" data-date="${dateStr}" data-time="${time}" data-tech="${tech}" title="Bloquear">✕</button>
-        </div>`;
+        const hasClient = allocs.length > 0;
+        if (!hasClient) {
+          html += `<div class="slot-actions">
+            <button class="slot-action-btn add-btn" data-action="add" data-date="${dateStr}" data-time="${time}" data-tech="${tech}" title="Adicionar">+</button>
+            <button class="slot-action-btn block-btn" data-action="block" data-date="${dateStr}" data-time="${time}" data-tech="${tech}" title="Bloquear">✕</button>
+          </div>`;
+        }
         html += '<div class="slot-content">';
-        if (allocs.length > 0) {
+        if (hasClient) {
           // Show unique companies (avoid repeating same company in merged cell)
           const seen = new Set();
           allocs.forEach(a => {
@@ -451,6 +454,10 @@ function attachCalendarEvents(grid) {
       const dateStr = cell.dataset.date;
       const time = cell.dataset.time;
       const tech = cell.dataset.tech;
+
+      // Only 1 client per slot per tech
+      const existing = getAllocsForSlot(dateStr, time, tech);
+      if (existing.length > 0) return;
 
       await addAllocation(state.draggingId, tech, dateStr, time, 1);
       renderAll();
