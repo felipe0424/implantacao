@@ -124,7 +124,7 @@ function getMonday(d) {
 // ============================================================
 function getWeekDays() {
   const days = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date(state.currentWeekStart);
     d.setDate(d.getDate() + i);
     days.push(d);
@@ -406,7 +406,7 @@ function renderDashboard() {
       const heightStyle = rowspan > 1 ? ` style="height: ${80 * rowspan}px"` : '';
 
       html += `<td class="slot-cell"${rowspanAttr}${heightStyle} data-date="${dateStr}" data-time="${time}">`;
-      html += '<div class="slot-content">';
+      html += '<div class="slot-content dashboard-row">';
 
       if (allocs.length > 0) {
         allocs.forEach(a => {
@@ -635,7 +635,7 @@ function hideTooltip() {
 // ============================================================
 function renderWeekLabel() {
   const days = getWeekDays();
-  document.getElementById('weekLabel').textContent = `${formatDate(days[0])} - ${formatDate(days[4])}`;
+  document.getElementById('weekLabel').textContent = `${formatDate(days[0])} - ${formatDate(days[6])}`;
 }
 
 function renderTabs() {

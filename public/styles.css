@@ -546,6 +546,17 @@ body {
   gap: 3px;
 }
 
+.slot-cell .slot-content.dashboard-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.slot-content.dashboard-row .slot-card {
+  flex: 1;
+  min-width: 0;
+}
+
 .slot-cell .slot-actions {
   position: absolute;
   top: 3px;
