@@ -307,6 +307,14 @@ body {
 
 .slot-card:hover .remove-btn { opacity: 1; }
 
+.slot-card.spanning {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, var(--surface-3), rgba(99, 102, 241, 0.08));
+  border-color: var(--primary);
+}
+
 .slot-card .tech-indicator {
   width: 18px;
   height: 18px;
@@ -504,6 +512,7 @@ body {
 
 .slot-cell .slot-content {
   min-height: 60px;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 3px;
