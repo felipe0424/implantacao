@@ -294,15 +294,22 @@ body {
 
 .slot-card .remove-btn {
   position: absolute;
-  top: 2px;
-  right: 4px;
-  background: none;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  background: var(--bad-bg);
   border: none;
   color: var(--bad);
   font-size: 0.7rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
   cursor: pointer;
   opacity: 0;
   transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .slot-card:hover .remove-btn { opacity: 1; }
