@@ -3,77 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Implantação Grupo Empresarial Pastelandia</title>
+  <title>Implantação - Grupo Empresarial Pastelandia</title>
   <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <header class="topbar">
-    <div>
-      <h1>Implantação Grupo Empresarial Pastelandia</h1>
-      <p class="subtitle">Planejamento semanal por técnico com arrastar e soltar</p>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo"><span>🚀</span></div>
+      <div>
+        <h1>Painel de Implantação</h1>
+        <p class="subtitle">Grupo Empresarial Pastelandia</p>
+      </div>
     </div>
-    <button id="resetBtn" class="btn danger">Resetar alocações</button>
+    <div class="header-right">
+      <div class="week-nav">
+        <button class="btn-icon" id="prevWeek">‹</button>
+        <span id="weekLabel"></span>
+        <button class="btn-icon" id="nextWeek">›</button>
+      </div>
+      <button class="btn-today" id="todayBtn">📅 Hoje</button>
+      <button class="btn-reset" id="resetBtn">🗑️ Resetar</button>
+    </div>
   </header>
 
-  <main class="layout">
-    <aside class="panel backlog-panel">
-      <div class="panel-header">
-        <h2>Backlog de Empresas</h2>
-        <span id="backlogCount" class="count-pill">0</span>
+  <main class="main-layout">
+    <!-- Sidebar: empresas -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>🏢 Empresas</h2>
+        <span class="pill" id="backlogCount">0</span>
       </div>
-      <div id="backlog" class="backlog dropzone" data-zone="backlog"></div>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Buscar empresa..." />
+      </div>
+      <div class="empresa-list" id="backlog" data-zone="backlog"></div>
     </aside>
 
-    <section class="panel board-panel">
-      <div class="panel-header">
-        <h2>Calendário Semanal</h2>
-        <div class="filters">
-          <label>
-            Técnico:
-            <select id="techFilter">
-              <option value="ALL">Todos</option>
-            </select>
-          </label>
-          <label>
-            Dia:
-            <select id="dayFilter">
-              <option value="ALL">Todos</option>
-            </select>
-          </label>
-        </div>
+    <!-- Calendário -->
+    <section class="calendar-section">
+      <!-- Tabs de técnicos -->
+      <div class="tech-tabs">
+        <button class="tech-tab active" data-tech="DIAS"><span class="tech-avatar">D</span> DIAS</button>
+        <button class="tech-tab" data-tech="FRANCA"><span class="tech-avatar">F</span> FRANÇA</button>
+        <button class="tech-tab" data-tech="RAMOS"><span class="tech-avatar">R</span> RAMOS</button>
+        <button class="tech-tab" data-tech="VIDAL"><span class="tech-avatar">V</span> VIDAL</button>
+        <button class="tech-tab" data-tech="ALL"><span class="tech-avatar all">✦</span> TODOS</button>
       </div>
 
-      <div class="board-wrap">
-        <table class="board" id="boardTable">
-          <thead>
-            <tr id="headRow">
-              <th>Horário</th>
-            </tr>
-          </thead>
-          <tbody id="boardBody"></tbody>
-        </table>
+      <!-- Grid do calendário -->
+      <div class="calendar-grid" id="calendarGrid">
+        <!-- Renderizado via JS -->
       </div>
 
+      <!-- Legenda -->
       <div class="legend">
-        <span class="badge ok">✅ Completo</span>
-        <span class="badge warn">Pendente</span>
-        <span class="badge bad">Não recebido</span>
+        <span class="legend-item ok">✅ Completo</span>
+        <span class="legend-item warn">⚠️ Pendente</span>
+        <span class="legend-item bad">❌ Não recebido</span>
       </div>
     </section>
   </main>
 
-  <template id="companyCardTemplate">
-    <article class="company-card" draggable="true">
-      <div class="card-top">
-        <h3 class="company-name"></h3>
-        <button class="btn tiny toggle-details">Detalhes</button>
-      </div>
-      <p class="company-link"></p>
-      <div class="badges"></div>
-      <p class="responsavel"></p>
-      <div class="details hidden"></div>
-    </article>
-  </template>
+  <!-- Tooltip flutuante -->
+  <div class="tooltip" id="tooltip"></div>
 
   <script src="script.js"></script>
 </body>
