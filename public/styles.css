@@ -468,6 +468,25 @@ body {
 
 .cal-table th.today .day-number { color: var(--primary); }
 
+.day-block-btn {
+  display: inline-block;
+  margin-top: 4px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.6rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: var(--transition);
+}
+
+.day-block-btn:hover {
+  background: var(--bad);
+  color: white;
+  border-color: var(--bad);
+}
+
 .cal-table td {
   border: 1px solid var(--border);
   vertical-align: top;

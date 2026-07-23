@@ -276,8 +276,14 @@ function renderCalendar() {
 
   let html = '<table class="cal-table"><thead><tr><th class="time-cell">HORA</th>';
   days.forEach(d => {
+    const dateStr = d.toISOString().slice(0, 10);
     const todayClass = isToday(d) ? ' today' : '';
-    html += `<th class="${todayClass}">${getDayName(d)}<span class="day-number">${d.getDate()}</span></th>`;
+    const allBlocked = TIMES.every(t => isBlocked(dateStr, t, tech));
+    const dayBtnLabel = allBlocked ? '↩' : '🚫';
+    const dayBtnTitle = allBlocked ? 'Liberar dia' : 'Bloquear dia inteiro';
+    html += `<th class="${todayClass}">${getDayName(d)}<span class="day-number">${d.getDate()}</span>
+      <button class="day-block-btn" data-action="${allBlocked ? 'unblock-day' : 'block-day'}" data-date="${dateStr}" data-tech="${tech}" title="${dayBtnTitle}">${dayBtnLabel}</button>
+    </th>`;
   });
   html += '</tr></thead><tbody>';
 
@@ -514,6 +520,31 @@ function attachCalendarEvents(grid) {
       card.addEventListener('mousemove', (e) => moveTooltip(e));
       card.addEventListener('mouseleave', hideTooltip);
     }
+  });
+
+  // Day block/unblock buttons
+  grid.querySelectorAll('.day-block-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const action = btn.dataset.action;
+      const dateStr = btn.dataset.date;
+      const tech = btn.dataset.tech;
+
+      if (action === 'block-day') {
+        for (const time of TIMES) {
+          if (!isBlocked(dateStr, time, tech)) {
+            await blockSlot(tech, dateStr, time);
+          }
+        }
+      } else if (action === 'unblock-day') {
+        for (const time of TIMES) {
+          if (isBlocked(dateStr, time, tech)) {
+            await unblockSlot(tech, dateStr, time);
+          }
+        }
+      }
+      renderAll();
+    });
   });
 }
 
