@@ -17,6 +17,10 @@
         <p class="subtitle">Grupo Empresarial Pastelandia</p>
       </div>
     </div>
+    <div class="header-center">
+      <button class="nav-btn" data-page="calendar">📋 Calendário</button>
+      <button class="nav-btn active" data-page="dashboard">📊 Dashboard</button>
+    </div>
     <div class="header-right">
       <div class="week-nav">
         <button class="btn-icon" id="prevWeek">‹</button>
@@ -41,30 +45,66 @@
       <div class="empresa-list" id="backlog" data-zone="backlog"></div>
     </aside>
 
-    <!-- Calendário -->
-    <section class="calendar-section">
-      <!-- Tabs de técnicos -->
+    <!-- Página Calendário (por técnico) -->
+    <section class="calendar-section page-content" id="pageCalendar">
       <div class="tech-tabs">
         <button class="tech-tab active" data-tech="DIAS"><span class="tech-avatar">D</span> DIAS</button>
         <button class="tech-tab" data-tech="FRANCA"><span class="tech-avatar">F</span> FRANÇA</button>
         <button class="tech-tab" data-tech="RAMOS"><span class="tech-avatar">R</span> RAMOS</button>
         <button class="tech-tab" data-tech="VIDAL"><span class="tech-avatar">V</span> VIDAL</button>
-        <button class="tech-tab" data-tech="ALL"><span class="tech-avatar all">✦</span> TODOS</button>
       </div>
-
-      <!-- Grid do calendário -->
-      <div class="calendar-grid" id="calendarGrid">
-        <!-- Renderizado via JS -->
-      </div>
-
-      <!-- Legenda -->
+      <div class="calendar-grid" id="calendarGrid"></div>
       <div class="legend">
         <span class="legend-item ok">✅ Completo</span>
         <span class="legend-item warn">⚠️ Pendente</span>
         <span class="legend-item bad">❌ Não recebido</span>
       </div>
     </section>
+
+    <!-- Página Dashboard (todos) -->
+    <section class="calendar-section page-content hidden" id="pageDashboard">
+      <div class="dashboard-header">
+        <h2>📊 Visão Geral - Todos os Técnicos</h2>
+      </div>
+      <div class="calendar-grid" id="dashboardGrid"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="tech-badge-legend db">D</span> DIAS</span>
+        <span class="legend-item"><span class="tech-badge-legend fb">F</span> FRANÇA</span>
+        <span class="legend-item"><span class="tech-badge-legend rb">R</span> RAMOS</span>
+        <span class="legend-item"><span class="tech-badge-legend vb">V</span> VIDAL</span>
+      </div>
+    </section>
   </main>
+
+  <!-- Modal adicionar cliente -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">Adicionar Cliente</h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label">Empresa:</label>
+        <select id="modalCompanySelect" class="modal-select"></select>
+        <label class="modal-label">Técnico:</label>
+        <select id="modalTechSelect" class="modal-select">
+          <option value="DIAS">DIAS</option>
+          <option value="FRANCA">FRANÇA</option>
+          <option value="RAMOS">RAMOS</option>
+          <option value="VIDAL">VIDAL</option>
+        </select>
+        <label class="modal-label">Duração:</label>
+        <select id="modalDuration" class="modal-select">
+          <option value="1">1 horário</option>
+          <option value="2">2 horários</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="modalCancel">Cancelar</button>
+        <button class="btn-confirm" id="modalConfirm">✓ Adicionar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Tooltip flutuante -->
   <div class="tooltip" id="tooltip"></div>
