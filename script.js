@@ -217,6 +217,25 @@ function renderCalendar() {
   const days = getWeekDays();
   const tech = state.activeTech;
 
+  // Build a map of which cells are "covered" by a span from a row above
+  const covered = {};
+  days.forEach(d => {
+    const dateStr = d.toISOString().slice(0, 10);
+    const allocs = state.allocations.filter(a => a.date === dateStr && a.tech === tech);
+    allocs.forEach(a => {
+      const span = a.span || 1;
+      if (span > 1) {
+        const startIdx = TIMES.indexOf(a.time);
+        for (let s = 1; s < span; s++) {
+          if (startIdx + s < TIMES.length) {
+            const coveredKey = `${dateStr}_${TIMES[startIdx + s]}`;
+            covered[coveredKey] = true;
+          }
+        }
+      }
+    });
+  });
+
   let html = '<table class="cal-table"><thead><tr><th class="time-cell">HORA</th>';
   days.forEach(d => {
     const todayClass = isToday(d) ? ' today' : '';
@@ -229,11 +248,25 @@ function renderCalendar() {
     html += `<td class="time-cell">${time}</td>`;
     days.forEach(d => {
       const dateStr = d.toISOString().slice(0, 10);
+      const cellKey = `${dateStr}_${time}`;
+
+      // Skip if covered by a rowspan from above
+      if (covered[cellKey]) return;
+
       const blocked = isBlocked(dateStr, time, tech);
       const allocs = getAllocsForSlot(dateStr, time, tech);
-      const cellClass = blocked ? 'slot-cell unavailable' : 'slot-cell';
 
-      html += `<td class="${cellClass}" data-date="${dateStr}" data-time="${time}" data-tech="${tech}">`;
+      // Determine max span for this cell
+      let rowspan = 1;
+      if (allocs.length > 0) {
+        rowspan = Math.max(...allocs.map(a => a.span || 1));
+      }
+
+      const cellClass = blocked ? 'slot-cell unavailable' : 'slot-cell';
+      const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
+      const heightStyle = rowspan > 1 ? ` style="height: ${80 * rowspan}px"` : '';
+
+      html += `<td class="${cellClass}"${rowspanAttr}${heightStyle} data-date="${dateStr}" data-time="${time}" data-tech="${tech}">`;
 
       if (!blocked) {
         html += `<div class="slot-actions">
@@ -242,12 +275,13 @@ function renderCalendar() {
         </div>`;
         html += '<div class="slot-content">';
         if (allocs.length > 0) {
-          allocs.forEach((a, idx) => {
+          allocs.forEach(a => {
             const comp = companies.find(c => c.id === a.companyId);
             if (comp) {
-              html += `<div class="slot-card" data-company-id="${comp.id}" data-alloc-idx="${idx}" data-date="${dateStr}" data-time="${time}" data-tech="${tech}">
+              const spanLabel = (a.span || 1) > 1 ? ` (${a.span}h)` : '';
+              html += `<div class="slot-card" data-company-id="${comp.id}" data-date="${dateStr}" data-time="${time}" data-tech="${tech}">
                 <span class="tech-indicator ${TECH_CLASSES[tech]}">${TECH_LETTERS[tech]}</span>
-                <span>${comp.id} - ${comp.nome}</span>
+                <span>${comp.id} - ${comp.nome}${spanLabel}</span>
                 <button class="remove-btn" data-remove-company="${comp.id}" data-remove-date="${dateStr}" data-remove-time="${time}" data-remove-tech="${tech}">✕</button>
               </div>`;
             }
@@ -278,6 +312,26 @@ function renderDashboard() {
   const grid = document.getElementById('dashboardGrid');
   const days = getWeekDays();
 
+  // Build covered cells map (all techs)
+  const covered = {};
+  days.forEach(d => {
+    const dateStr = d.toISOString().slice(0, 10);
+    const allocs = state.allocations.filter(a => a.date === dateStr);
+    allocs.forEach(a => {
+      const span = a.span || 1;
+      if (span > 1) {
+        const startIdx = TIMES.indexOf(a.time);
+        for (let s = 1; s < span; s++) {
+          if (startIdx + s < TIMES.length) {
+            const coveredKey = `${dateStr}_${TIMES[startIdx + s]}`;
+            if (!covered[coveredKey]) covered[coveredKey] = 0;
+            covered[coveredKey]++;
+          }
+        }
+      }
+    });
+  });
+
   let html = '<table class="cal-table"><thead><tr><th class="time-cell">HORA</th>';
   days.forEach(d => {
     const todayClass = isToday(d) ? ' today' : '';
@@ -290,18 +344,32 @@ function renderDashboard() {
     html += `<td class="time-cell">${time}</td>`;
     days.forEach(d => {
       const dateStr = d.toISOString().slice(0, 10);
+      const cellKey = `${dateStr}_${time}`;
       const allocs = getAllocsForSlotAllTechs(dateStr, time);
 
-      html += `<td class="slot-cell" data-date="${dateStr}" data-time="${time}">`;
+      // Check if ALL allocs for this cell are covered (continuation of span from above)
+      // Only skip if this cell has no primary allocs and is fully covered
+      if (covered[cellKey] && allocs.length === 0) return;
+
+      let rowspan = 1;
+      if (allocs.length > 0) {
+        rowspan = Math.max(...allocs.map(a => a.span || 1));
+      }
+
+      const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
+      const heightStyle = rowspan > 1 ? ` style="height: ${80 * rowspan}px"` : '';
+
+      html += `<td class="slot-cell"${rowspanAttr}${heightStyle} data-date="${dateStr}" data-time="${time}">`;
       html += '<div class="slot-content">';
 
       if (allocs.length > 0) {
         allocs.forEach(a => {
           const comp = companies.find(c => c.id === a.companyId);
           if (comp) {
+            const spanLabel = (a.span || 1) > 1 ? ` (${a.span}h)` : '';
             html += `<div class="slot-card" data-company-id="${comp.id}">
               <span class="tech-indicator ${TECH_CLASSES[a.tech]}">${TECH_LETTERS[a.tech]}</span>
-              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${comp.id} - ${comp.nome}</span>
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${comp.id} - ${comp.nome}${spanLabel}</span>
             </div>`;
           }
         });
@@ -352,7 +420,8 @@ function attachCalendarEvents(grid) {
         companyId: state.draggingId,
         date: dateStr,
         time: time,
-        tech: tech
+        tech: tech,
+        span: 1
       });
 
       saveState();
@@ -455,17 +524,7 @@ function confirmModal() {
   const dateStr = modalContext.date;
   const time = modalContext.time;
 
-  // Add for first time slot
-  state.allocations.push({ companyId, date: dateStr, time, tech });
-
-  // If 2 slots, find next time slot
-  if (duration === 2) {
-    const timeIdx = TIMES.indexOf(time);
-    if (timeIdx < TIMES.length - 1) {
-      const nextTime = TIMES[timeIdx + 1];
-      state.allocations.push({ companyId, date: dateStr, time: nextTime, tech });
-    }
-  }
+  state.allocations.push({ companyId, date: dateStr, time, tech, span: duration });
 
   saveState();
   closeModal();
