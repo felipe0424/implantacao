@@ -1,12 +1,14 @@
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const sql = neon(process.env.DATABASE_URL);
+
   // GET - listar alocações
   if (req.method === 'GET') {
     try {
-      const { rows } = await sql`SELECT * FROM allocations ORDER BY date, time`;
+      const rows = await sql`SELECT * FROM allocations ORDER BY date, time`;
       const allocations = rows.map(r => ({
         id: r.id,
         companyId: r.company_id,
@@ -25,7 +27,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const { companyId, tech, date, time, span } = req.body;
-      const { rows } = await sql`
+      const rows = await sql`
         INSERT INTO allocations (company_id, tech, date, time, span)
         VALUES (${companyId}, ${tech}, ${date}, ${time}, ${span || 1})
         RETURNING id
