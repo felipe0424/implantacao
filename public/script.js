@@ -223,23 +223,55 @@ function renderCalendar() {
   const days = getWeekDays();
   const tech = state.activeTech;
 
-  // Build a map of which cells are "covered" by a span from a row above
-  const covered = {};
+  // Para cada dia, calcula os "spans" reais baseado em alocações consecutivas
+  // do mesmo cliente. Retorna um mapa: { "dateStr_time" -> { skip: bool, rowspan: number, allocs: [] } }
+  const cellInfo = {};
+
   days.forEach(d => {
     const dateStr = d.toISOString().slice(0, 10);
-    const allocs = state.allocations.filter(a => a.date === dateStr && a.tech === tech);
-    allocs.forEach(a => {
-      const span = a.span || 1;
-      if (span > 1) {
-        const startIdx = TIMES.indexOf(a.time);
-        for (let s = 1; s < span; s++) {
-          if (startIdx + s < TIMES.length) {
-            const coveredKey = `${dateStr}_${TIMES[startIdx + s]}`;
-            covered[coveredKey] = true;
+    let skipUntilIdx = -1;
+
+    for (let i = 0; i < TIMES.length; i++) {
+      const time = TIMES[i];
+      const key = `${dateStr}_${time}`;
+
+      if (i <= skipUntilIdx) {
+        cellInfo[key] = { skip: true };
+        continue;
+      }
+
+      const allocs = getAllocsForSlot(dateStr, time, tech);
+
+      if (allocs.length === 0 || isBlocked(dateStr, time, tech)) {
+        cellInfo[key] = { skip: false, rowspan: 1, allocs };
+        continue;
+      }
+
+      // Check for explicit span (from modal with duration 2)
+      const maxExplicitSpan = Math.max(...allocs.map(a => a.span || 1));
+
+      // Also detect consecutive same-company allocations
+      let consecutiveSpan = 1;
+      if (allocs.length === 1) {
+        const companyId = allocs[0].companyId;
+        for (let j = i + 1; j < TIMES.length; j++) {
+          const nextAllocs = getAllocsForSlot(dateStr, TIMES[j], tech);
+          if (nextAllocs.length === 1 && nextAllocs[0].companyId === companyId) {
+            consecutiveSpan++;
+          } else {
+            break;
           }
         }
       }
-    });
+
+      const finalSpan = Math.max(maxExplicitSpan, consecutiveSpan);
+      cellInfo[key] = { skip: false, rowspan: finalSpan, allocs };
+
+      // Mark subsequent cells as skipped
+      if (finalSpan > 1) {
+        skipUntilIdx = i + finalSpan - 1;
+      }
+    }
   });
 
   let html = '<table class="cal-table"><thead><tr><th class="time-cell">HORA</th>';
@@ -249,24 +281,19 @@ function renderCalendar() {
   });
   html += '</tr></thead><tbody>';
 
-  TIMES.forEach(time => {
+  TIMES.forEach((time, timeIdx) => {
     html += '<tr>';
     html += `<td class="time-cell">${time}</td>`;
     days.forEach(d => {
       const dateStr = d.toISOString().slice(0, 10);
-      const cellKey = `${dateStr}_${time}`;
+      const key = `${dateStr}_${time}`;
+      const info = cellInfo[key] || { skip: false, rowspan: 1, allocs: [] };
 
-      // Skip if covered by a rowspan from above
-      if (covered[cellKey]) return;
+      if (info.skip) return;
 
       const blocked = isBlocked(dateStr, time, tech);
-      const allocs = getAllocsForSlot(dateStr, time, tech);
-
-      // Determine max span for this cell
-      let rowspan = 1;
-      if (allocs.length > 0) {
-        rowspan = Math.max(...allocs.map(a => a.span || 1));
-      }
+      const allocs = info.allocs || [];
+      const rowspan = info.rowspan || 1;
 
       const cellClass = blocked ? 'slot-cell unavailable' : 'slot-cell';
       const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
@@ -281,14 +308,18 @@ function renderCalendar() {
         </div>`;
         html += '<div class="slot-content">';
         if (allocs.length > 0) {
+          // Show unique companies (avoid repeating same company in merged cell)
+          const seen = new Set();
           allocs.forEach(a => {
+            if (seen.has(a.companyId)) return;
+            seen.add(a.companyId);
             const comp = companies.find(c => c.id === a.companyId);
             if (comp) {
-              const spanLabel = (a.span || 1) > 1 ? ` (${a.span}h)` : '';
-              html += `<div class="slot-card" data-company-id="${comp.id}" data-date="${dateStr}" data-time="${time}" data-tech="${tech}">
+              const spanLabel = rowspan > 1 ? ` (${rowspan}h)` : '';
+              html += `<div class="slot-card${rowspan > 1 ? ' spanning' : ''}" data-company-id="${comp.id}" data-date="${dateStr}" data-time="${time}" data-tech="${tech}">
                 <span class="tech-indicator ${TECH_CLASSES[tech]}">${TECH_LETTERS[tech]}</span>
                 <span>${comp.id} - ${comp.nome}${spanLabel}</span>
-                <button class="remove-btn" data-remove-company="${comp.id}" data-remove-date="${dateStr}" data-remove-time="${time}" data-remove-tech="${tech}">✕</button>
+                <button class="remove-btn" data-remove-company="${comp.id}" data-remove-date="${dateStr}" data-remove-time="${time}" data-remove-tech="${tech}" data-remove-span="${rowspan}">✕</button>
               </div>`;
             }
           });
@@ -455,8 +486,14 @@ function attachCalendarEvents(grid) {
       const date = btn.dataset.removeDate;
       const time = btn.dataset.removeTime;
       const tech = btn.dataset.removeTech;
+      const span = parseInt(btn.dataset.removeSpan) || 1;
 
-      await removeAllocation(cid, date, time, tech);
+      // Remove all consecutive allocations of this company
+      const startIdx = TIMES.indexOf(time);
+      for (let i = 0; i < span; i++) {
+        const t = TIMES[startIdx + i];
+        if (t) await removeAllocation(cid, date, t, tech);
+      }
       renderAll();
     });
   });
