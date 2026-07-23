@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Implantação Grupo Empresarial Pastelandia</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Implantação Grupo Empresarial Pastelandia</h1>
+      <p class="subtitle">Planejamento semanal por técnico com arrastar e soltar</p>
+    </div>
+    <button id="resetBtn" class="btn danger">Resetar alocações</button>
+  </header>
+
+  <main class="layout">
+    <aside class="panel backlog-panel">
+      <div class="panel-header">
+        <h2>Backlog de Empresas</h2>
+        <span id="backlogCount" class="count-pill">0</span>
+      </div>
+      <div id="backlog" class="backlog dropzone" data-zone="backlog"></div>
+    </aside>
+
+    <section class="panel board-panel">
+      <div class="panel-header">
+        <h2>Calendário Semanal</h2>
+        <div class="filters">
+          <label>
+            Técnico:
+            <select id="techFilter">
+              <option value="ALL">Todos</option>
+            </select>
+          </label>
+          <label>
+            Dia:
+            <select id="dayFilter">
+              <option value="ALL">Todos</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="board-wrap">
+        <table class="board" id="boardTable">
+          <thead>
+            <tr id="headRow">
+              <th>Horário</th>
+            </tr>
+          </thead>
+          <tbody id="boardBody"></tbody>
+        </table>
+      </div>
+
+      <div class="legend">
+        <span class="badge ok">✅ Completo</span>
+        <span class="badge warn">Pendente</span>
+        <span class="badge bad">Não recebido</span>
+      </div>
+    </section>
+  </main>
+
+  <template id="companyCardTemplate">
+    <article class="company-card" draggable="true">
+      <div class="card-top">
+        <h3 class="company-name"></h3>
+        <button class="btn tiny toggle-details">Detalhes</button>
+      </div>
+      <p class="company-link"></p>
+      <div class="badges"></div>
+      <p class="responsavel"></p>
+      <div class="details hidden"></div>
+    </article>
+  </template>
+
+  <script src="script.js"></script>
+</body>
+</html>
