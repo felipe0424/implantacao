@@ -1,77 +1,14 @@
 // ============================================================
 // DADOS DAS EMPRESAS
 // ============================================================
-const companies = [
-  {
-    id: "74051",
-    nome: "SORVETES NESTLE VILAREJO",
-    cidade: "PETROLINA",
-    link: "sorvetesnestle.meusoftcom.com.br",
-    meuCarrinho: "Não liberado",
-    cardapio: "Recebido, Não Cadastrado",
-    certificado: "Não recebido",
-    responsavel: "Cli Thais Nestlé Vilarejo",
-    horarios: [
-      "30/07 (16h) - Instalação + Treinamento",
-      "31/07 (16h) - Continuação de treinamento",
-      "01/08 (17h) - Virada de sistema"
-    ]
-  },
-  {
-    id: "74041",
-    nome: "SORVETES NESTLE SHOPPING",
-    cidade: "PETROLINA",
-    link: "sorvetesnetle.meusoftcom.com.br",
-    meuCarrinho: "Pendente",
-    cardapio: "✅",
-    certificado: "✅",
-    responsavel: "Timoteo Gerente Sorvetes Nestle River",
-    horarios: [
-      "31/07 (9h) - Instalação + Treinamento",
-      "01/08 (9h) - Virada de sistema"
-    ]
-  },
-  {
-    id: "74039",
-    nome: "PASTELANDIA",
-    cidade: "PETROLINA",
-    link: "pastelandiapetrolina.meusoftcom.com.br",
-    meuCarrinho: "Não liberado",
-    cardapio: "Não recebido",
-    certificado: "Não recebido",
-    responsavel: "Pendente",
-    horarios: ["Pendente"]
-  },
-  {
-    id: "74053",
-    nome: "PASTELANDIA VILAREJO",
-    cidade: "PETROLINA",
-    link: "pastelandiavilarejo.meusoftcom.com.br",
-    meuCarrinho: "Não liberado",
-    cardapio: "Recebido, não cadastrado",
-    certificado: "Não recebido",
-    responsavel: "Pendente",
-    horarios: ["Pendente"]
-  },
-  {
-    id: "74054",
-    nome: "TORTTERIA SUICA RIVER SHOPPING",
-    cidade: "PETROLINA",
-    link: "tortteriasuica.meusoftcom.com.br",
-    meuCarrinho: "Não liberado",
-    cardapio: "Não recebido",
-    certificado: "Não recebido",
-    responsavel: "Pendente",
-    horarios: ["Pendente"]
-  }
-];
+let companies = [];
 
 const TECHS = ["DIAS", "FRANCA", "RAMOS", "VIDAL"];
 const TECH_LABELS = { DIAS: "DIAS", FRANCA: "FRANÇA", RAMOS: "RAMOS", VIDAL: "VIDAL" };
 const TECH_LETTERS = { DIAS: "D", FRANCA: "F", RAMOS: "R", VIDAL: "V" };
 const TECH_CLASSES = { DIAS: "dias-bg", FRANCA: "franca-bg", RAMOS: "ramos-bg", VIDAL: "vidal-bg" };
 const TIMES = ["08h", "09h", "10h", "11h", "14h", "15h", "16h", "17h"];
-const STORAGE_KEY = "implantacao_v4";
+const API_BASE = '/api';
 
 // ============================================================
 // ESTADO
@@ -80,28 +17,97 @@ let state = {
   currentWeekStart: getMonday(new Date()),
   activeTech: "DIAS",
   activePage: "calendar",
-  // allocations: { "key": { companyId, date, time, tech } } - multiple entries per company allowed
   allocations: [],
-  // blocked slots
   blocked: [],
-  draggingId: null
+  draggingId: null,
+  loading: false
 };
 
-function loadState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved) {
-      state.allocations = saved.allocations || [];
-      state.blocked = saved.blocked || [];
-    }
-  } catch { /* ignore */ }
+// ============================================================
+// API HELPERS
+// ============================================================
+async function api(endpoint, method, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API_BASE}/${endpoint}`, opts);
+  return res.json();
 }
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    allocations: state.allocations,
-    blocked: state.blocked
-  }));
+async function loadFromAPI() {
+  state.loading = true;
+  try {
+    const [comps, allocs, blocked] = await Promise.all([
+      api('companies', 'GET'),
+      api('allocations', 'GET'),
+      api('blocked', 'GET')
+    ]);
+    companies = comps;
+    state.allocations = allocs;
+    state.blocked = blocked;
+  } catch (err) {
+    console.warn('API indisponível, usando dados locais:', err);
+    loadLocalFallback();
+  }
+  state.loading = false;
+}
+
+async function addAllocation(companyId, tech, date, time, span) {
+  try {
+    const result = await api('allocations', 'POST', { companyId, tech, date, time, span });
+    state.allocations.push({ id: result.id, companyId, tech, date, time, span });
+  } catch {
+    state.allocations.push({ companyId, tech, date, time, span });
+  }
+}
+
+async function removeAllocation(companyId, date, time, tech) {
+  try {
+    await api('allocations', 'DELETE', { companyId, date, time, tech });
+  } catch { /* ignore */ }
+  const idx = state.allocations.findIndex(a =>
+    a.companyId === companyId && a.date === date && a.time === time && a.tech === tech
+  );
+  if (idx >= 0) state.allocations.splice(idx, 1);
+}
+
+async function blockSlot(tech, date, time) {
+  try {
+    await api('blocked', 'POST', { tech, date, time });
+  } catch { /* ignore */ }
+  state.blocked.push({ tech, date, time });
+}
+
+async function unblockSlot(tech, date, time) {
+  try {
+    await api('blocked', 'DELETE', { tech, date, time });
+  } catch { /* ignore */ }
+  state.blocked = state.blocked.filter(b => !(b.tech === tech && b.date === date && b.time === time));
+}
+
+async function resetAll() {
+  try {
+    // Delete all allocations and blocks via individual calls
+    await Promise.all([
+      ...state.allocations.map(a => api('allocations', 'DELETE', a)),
+      ...state.blocked.map(b => api('blocked', 'DELETE', b))
+    ]);
+  } catch { /* ignore */ }
+  state.allocations = [];
+  state.blocked = [];
+}
+
+// Fallback local se API não estiver disponível
+function loadLocalFallback() {
+  companies = [
+    { id: "74051", nome: "SORVETES NESTLE VILAREJO", cidade: "PETROLINA", link: "sorvetesnestle.meusoftcom.com.br", meuCarrinho: "Não liberado", cardapio: "Recebido, Não Cadastrado", certificado: "Não recebido", responsavel: "Cli Thais Nestlé Vilarejo", horarios: ["30/07 (16h) - Instalação + Treinamento", "31/07 (16h) - Continuação de treinamento", "01/08 (17h) - Virada de sistema"] },
+    { id: "74041", nome: "SORVETES NESTLE SHOPPING", cidade: "PETROLINA", link: "sorvetesnetle.meusoftcom.com.br", meuCarrinho: "Pendente", cardapio: "✅", certificado: "✅", responsavel: "Timoteo Gerente Sorvetes Nestle River", horarios: ["31/07 (9h) - Instalação + Treinamento", "01/08 (9h) - Virada de sistema"] },
+    { id: "74039", nome: "PASTELANDIA", cidade: "PETROLINA", link: "pastelandiapetrolina.meusoftcom.com.br", meuCarrinho: "Não liberado", cardapio: "Não recebido", certificado: "Não recebido", responsavel: "Pendente", horarios: ["Pendente"] },
+    { id: "74053", nome: "PASTELANDIA VILAREJO", cidade: "PETROLINA", link: "pastelandiavilarejo.meusoftcom.com.br", meuCarrinho: "Não liberado", cardapio: "Recebido, não cadastrado", certificado: "Não recebido", responsavel: "Pendente", horarios: ["Pendente"] },
+    { id: "74054", nome: "TORTTERIA SUICA RIVER SHOPPING", cidade: "PETROLINA", link: "tortteriasuica.meusoftcom.com.br", meuCarrinho: "Não liberado", cardapio: "Não recebido", certificado: "Não recebido", responsavel: "Pendente", horarios: ["Pendente"] }
+  ];
 }
 
 function getMonday(d) {
@@ -406,7 +412,7 @@ function attachCalendarEvents(grid) {
       cell.classList.add('drag-over');
     });
     cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
-    cell.addEventListener('drop', (e) => {
+    cell.addEventListener('drop', async (e) => {
       e.preventDefault();
       cell.classList.remove('drag-over');
       if (!state.draggingId) return;
@@ -415,23 +421,14 @@ function attachCalendarEvents(grid) {
       const time = cell.dataset.time;
       const tech = cell.dataset.tech;
 
-      // Add allocation (allow duplicates in different slots)
-      state.allocations.push({
-        companyId: state.draggingId,
-        date: dateStr,
-        time: time,
-        tech: tech,
-        span: 1
-      });
-
-      saveState();
+      await addAllocation(state.draggingId, tech, dateStr, time, 1);
       renderAll();
     });
   });
 
   // Action buttons (add, block, unblock)
   grid.querySelectorAll('.slot-action-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
       const dateStr = btn.dataset.date;
@@ -441,12 +438,10 @@ function attachCalendarEvents(grid) {
       if (action === 'add') {
         openAddModal(dateStr, time, tech);
       } else if (action === 'block') {
-        state.blocked.push({ date: dateStr, time: time, tech: tech });
-        saveState();
+        await blockSlot(tech, dateStr, time);
         renderAll();
       } else if (action === 'unblock') {
-        state.blocked = state.blocked.filter(b => !(b.date === dateStr && b.time === time && b.tech === tech));
-        saveState();
+        await unblockSlot(tech, dateStr, time);
         renderAll();
       }
     });
@@ -454,22 +449,15 @@ function attachCalendarEvents(grid) {
 
   // Remove buttons
   grid.querySelectorAll('.remove-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const cid = btn.dataset.removeCompany;
       const date = btn.dataset.removeDate;
       const time = btn.dataset.removeTime;
       const tech = btn.dataset.removeTech;
 
-      // Remove first matching allocation
-      const idx = state.allocations.findIndex(a =>
-        a.companyId === cid && a.date === date && a.time === time && a.tech === tech
-      );
-      if (idx >= 0) {
-        state.allocations.splice(idx, 1);
-        saveState();
-        renderAll();
-      }
+      await removeAllocation(cid, date, time, tech);
+      renderAll();
     });
   });
 
@@ -517,16 +505,15 @@ function closeModal() {
   document.getElementById('modalOverlay').classList.add('hidden');
 }
 
-function confirmModal() {
+async function confirmModal() {
   const companyId = document.getElementById('modalCompanySelect').value;
   const tech = document.getElementById('modalTechSelect').value;
   const duration = parseInt(document.getElementById('modalDuration').value);
   const dateStr = modalContext.date;
   const time = modalContext.time;
 
-  state.allocations.push({ companyId, date: dateStr, time, tech, span: duration });
+  await addAllocation(companyId, tech, dateStr, time, duration);
 
-  saveState();
   closeModal();
   renderAll();
 }
@@ -637,11 +624,9 @@ function setupEvents() {
   });
 
   // Reset
-  document.getElementById('resetBtn').addEventListener('click', () => {
+  document.getElementById('resetBtn').addEventListener('click', async () => {
     if (confirm('Tem certeza que deseja apagar todas as alocações e bloqueios?')) {
-      state.allocations = [];
-      state.blocked = [];
-      saveState();
+      await resetAll();
       renderAll();
     }
   });
@@ -661,9 +646,9 @@ function setupEvents() {
 // ============================================================
 // INIT
 // ============================================================
-function init() {
-  loadState();
+async function init() {
   setupEvents();
+  await loadFromAPI();
   renderAll();
 }
 
